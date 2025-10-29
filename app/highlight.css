@@ -1,0 +1,164 @@
+/* Syntax highlighting for code blocks */
+.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1em;
+  background: #1e1e1e !important;
+  color: #d4d4d4;
+  border-radius: 0.5rem;
+  font-size: 0.9em;
+  line-height: 1.6;
+}
+
+/* VS Code Dark+ theme colors */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section,
+.hljs-link {
+  color: #569cd6;
+  font-weight: normal;
+}
+
+.hljs-string {
+  color: #ce9178;
+}
+
+.hljs-title,
+.hljs-name,
+.hljs-type,
+.hljs-attribute {
+  color: #4ec9b0;
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-built_in {
+  color: #b5cea8;
+}
+
+.hljs-params {
+  color: #9cdcfe;
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: #6a9955;
+  font-style: italic;
+}
+
+.hljs-meta {
+  color: #d4d4d4;
+}
+
+.hljs-function {
+  color: #dcdcaa;
+}
+
+.hljs-tag {
+  color: #569cd6;
+}
+
+.hljs-attr {
+  color: #9cdcfe;
+}
+
+.hljs-variable {
+  color: #4fc1ff;
+}
+
+.hljs-class .hljs-title {
+  color: #4ec9b0;
+}
+
+.hljs-operator {
+  color: #d4d4d4;
+}
+
+/* Additional styling for code elements */
+pre {
+  margin: 1.5em 0;
+  overflow-x: auto;
+}
+
+pre code.hljs {
+  display: block;
+  background: #1e1e1e !important;
+  padding: 1.25em;
+}
+
+/* Inline code styling */
+code:not(.hljs) {
+  background: #f4f4f5;
+  padding: 0.2em 0.4em;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  color: #e91e63;
+}
+
+.dark code:not(.hljs) {
+  background: #27272a;
+  color: #f472b6;
+}
+
+/* KaTeX math styling improvements */
+.katex {
+  font-size: 1.1em;
+  line-height: 1.8;
+}
+
+.katex-display {
+  margin: 1.5em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5em 0;
+}
+
+/* Better spacing for mathematical expressions */
+.katex-display > .katex {
+  display: block;
+  text-align: center;
+}
+
+/* Improve overall article readability */
+article {
+  line-height: 1.75;
+}
+
+article > * + * {
+  margin-top: 1.25em;
+}
+
+/* Better spacing for nested lists */
+article ul ul,
+article ol ul,
+article ul ol,
+article ol ol {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+/* Improve list item spacing */
+article li > p {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+/* Better spacing for inline elements */
+article strong,
+article em,
+article code {
+  line-height: inherit;
+}
+
+/* Improve table rendering in code blocks */
+.hljs table {
+  border-collapse: collapse;
+}
+
+.hljs table td,
+.hljs table th {
+  padding: 0.5em;
+  border: 1px solid #3f3f46;
+}
