@@ -18,6 +18,7 @@ interface Directory {
   name: string;
   path: string;
   isActive: boolean;
+  isBuiltIn: boolean;
   createdAt: string;
   _count: {
     readStatuses: number;
@@ -28,6 +29,8 @@ interface Directory {
 export default function SettingsPage() {
   const router = useRouter();
   const [directories, setDirectories] = useState<Directory[]>([]);
+  const [localDirectories, setLocalDirectories] = useState<Directory[]>([]);
+  const [builtInDirectories, setBuiltInDirectories] = useState<Directory[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState('');
@@ -45,6 +48,8 @@ export default function SettingsPage() {
       if (response.ok) {
         const data = await response.json();
         setDirectories(data.directories);
+        setLocalDirectories(data.localDirectories || []);
+        setBuiltInDirectories(data.builtInDirectories || []);
       }
     } catch (err) {
       console.error('Error loading directories:', err);
@@ -106,7 +111,13 @@ export default function SettingsPage() {
     }
   };
 
-  const handleDeleteDirectory = async (id: number) => {
+  const handleDeleteDirectory = async (id: number, isBuiltIn: boolean) => {
+    if (isBuiltIn) {
+      setError('Built-in directories cannot be deleted from the UI. Please remove them from the codebase.');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+
     if (!confirm('Are you sure you want to delete this directory? All associated data will be lost.')) {
       return;
     }
@@ -156,6 +167,13 @@ export default function SettingsPage() {
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Global Error Message */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          </div>
+        )}
+
         {/* Add Directory Section */}
         <div className="mb-8">
           {!showAddForm ? (
@@ -196,10 +214,6 @@ export default function SettingsPage() {
                 />
               </div>
 
-              {error && (
-                <p className="text-sm text-red-500">{error}</p>
-              )}
-
               <div className="flex gap-2">
                 <button
                   onClick={handleAddDirectory}
@@ -229,79 +243,155 @@ export default function SettingsPage() {
         </div>
 
         {/* Directories List */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Your Learning Directories</h2>
-          
-          {directories.length === 0 ? (
-            <div className="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-8 text-center">
-              <FolderOpen className="w-12 h-12 mx-auto text-zinc-400 mb-4" />
-              <p className="text-zinc-500 dark:text-zinc-400">
-                No directories added yet. Add your first learning directory to get started!
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {directories.map((dir) => (
-                <div
-                  key={dir.id}
-                  className={`
-                    border rounded-xl p-4 transition-all
-                    ${dir.isActive 
-                      ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' 
-                      : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
-                    }
-                  `}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-lg">{dir.name}</h3>
-                        {dir.isActive && (
-                          <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
-                            Active
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3 font-mono">
-                        {dir.path}
-                      </p>
-                      <div className="flex gap-4 text-sm text-zinc-500 dark:text-zinc-400">
-                        <div className="flex items-center gap-1">
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>{dir._count.readStatuses} completed</span>
+        <div className="space-y-8">
+          {/* Local Directories Section */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Your Local Directories</h2>
+            
+            {localDirectories.length === 0 ? (
+              <div className="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-8 text-center">
+                <FolderOpen className="w-12 h-12 mx-auto text-zinc-400 mb-4" />
+                <p className="text-zinc-500 dark:text-zinc-400">
+                  No local directories added yet. Add your first learning directory to get started!
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {localDirectories.map((dir) => (
+                  <div
+                    key={dir.id}
+                    className={`
+                      border rounded-xl p-4 transition-all
+                      ${dir.isActive 
+                        ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' 
+                        : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
+                      }
+                    `}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-lg">{dir.name}</h3>
+                          {dir.isActive && (
+                            <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+                              Active
+                            </span>
+                          )}
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Bookmark className="w-4 h-4" />
-                          <span>{dir._count.bookmarks} bookmarked</span>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3 font-mono">
+                          {dir.path}
+                        </p>
+                        <div className="flex gap-4 text-sm text-zinc-500 dark:text-zinc-400">
+                          <div className="flex items-center gap-1">
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>{dir._count.readStatuses} completed</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Bookmark className="w-4 h-4" />
+                            <span>{dir._count.bookmarks} bookmarked</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex gap-2 ml-4">
-                      {!dir.isActive && (
+                      <div className="flex gap-2 ml-4">
+                        {!dir.isActive && (
+                          <button
+                            onClick={() => handleSetActive(dir.id)}
+                            disabled={processing}
+                            className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg 
+                              transition-colors disabled:opacity-50"
+                            title="Set as active"
+                          >
+                            <FolderOpen className="w-5 h-5" />
+                          </button>
+                        )}
                         <button
-                          onClick={() => handleSetActive(dir.id)}
+                          onClick={() => handleDeleteDirectory(dir.id, dir.isBuiltIn)}
                           disabled={processing}
-                          className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg 
-                            transition-colors disabled:opacity-50"
-                          title="Set as active"
+                          className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 
+                            rounded-lg transition-colors disabled:opacity-50"
+                          title="Delete directory"
                         >
-                          <FolderOpen className="w-5 h-5" />
+                          <Trash2 className="w-5 h-5" />
                         </button>
-                      )}
-                      <button
-                        onClick={() => handleDeleteDirectory(dir.id)}
-                        disabled={processing}
-                        className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 
-                          rounded-lg transition-colors disabled:opacity-50"
-                        title="Delete directory"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Built-in Directories Section */}
+          {builtInDirectories.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <h2 className="text-xl font-semibold">Built-in Directories</h2>
+                <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs rounded-full">
+                  Read-only
+                </span>
+              </div>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+                These directories are included with the application. To modify them, make changes in the codebase and create a PR.
+              </p>
+              
+              <div className="space-y-3">
+                {builtInDirectories.map((dir) => (
+                  <div
+                    key={dir.id}
+                    className={`
+                      border rounded-xl p-4 transition-all
+                      ${dir.isActive 
+                        ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' 
+                        : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
+                      }
+                    `}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-lg">{dir.name}</h3>
+                          {dir.isActive && (
+                            <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+                              Active
+                            </span>
+                          )}
+                          <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs rounded-full">
+                            Built-in
+                          </span>
+                        </div>
+                        <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-3 font-mono">
+                          {dir.path}
+                        </p>
+                        <div className="flex gap-4 text-sm text-zinc-500 dark:text-zinc-400">
+                          <div className="flex items-center gap-1">
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>{dir._count.readStatuses} completed</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Bookmark className="w-4 h-4" />
+                            <span>{dir._count.bookmarks} bookmarked</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 ml-4">
+                        {!dir.isActive && (
+                          <button
+                            onClick={() => handleSetActive(dir.id)}
+                            disabled={processing}
+                            className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg 
+                              transition-colors disabled:opacity-50"
+                            title="Set as active"
+                          >
+                            <FolderOpen className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

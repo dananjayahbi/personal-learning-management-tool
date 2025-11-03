@@ -34,6 +34,14 @@ export async function DELETE(
       );
     }
 
+    // Prevent deletion of built-in directories
+    if (directory.isBuiltIn) {
+      return NextResponse.json(
+        { error: 'Built-in directories cannot be deleted' },
+        { status: 403 }
+      );
+    }
+
     await prisma.directory.delete({
       where: { id },
     });

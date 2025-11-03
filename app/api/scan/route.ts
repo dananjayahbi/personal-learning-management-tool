@@ -64,9 +64,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Resolve the path - handle both absolute paths and relative paths from public
+    let resolvedPath = dirPath;
+    
+    // Check if it's a built-in directory path (contains public/assets/learning-directories)
+    if (dirPath.includes(path.join('public', 'assets', 'learning-directories'))) {
+      // It's already the correct path
+      resolvedPath = dirPath;
+    }
+
     // Check if path exists
     try {
-      const stats = await fs.stat(dirPath);
+      const stats = await fs.stat(resolvedPath);
       if (!stats.isDirectory()) {
         return NextResponse.json(
           { error: 'Path is not a directory' },
@@ -80,11 +89,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const tree = await buildTree(dirPath);
+    const tree = await buildTree(resolvedPath);
 
     return NextResponse.json({ 
       tree,
-      basePath: dirPath,
+      basePath: resolvedPath,
     });
   } catch (error) {
     console.error('Error scanning directory:', error);

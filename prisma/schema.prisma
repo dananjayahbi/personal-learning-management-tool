@@ -15,6 +15,7 @@ model Directory {
   name      String
   path      String   @unique
   isActive  Boolean  @default(false)
+  isBuiltIn Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

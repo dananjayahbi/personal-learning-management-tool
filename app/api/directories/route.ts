@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { syncBuiltInDirectories } from '@/lib/built-in-directories';
 
 // GET: Get all directories
 export async function GET() {
   try {
+    // Sync built-in directories from public folder
+    await syncBuiltInDirectories();
+
     const directories = await prisma.directory.findMany({
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { isBuiltIn: 'asc' }, // Local directories first
+        { createdAt: 'desc' },
+      ],
       include: {
         _count: {
           select: {
@@ -16,10 +23,15 @@ export async function GET() {
       },
     });
 
+    // Separate directories by type
+    const localDirectories = directories.filter(d => !d.isBuiltIn);
+    const builtInDirectories = directories.filter(d => d.isBuiltIn);
     const activeDirectory = directories.find(d => d.isActive);
 
     return NextResponse.json({ 
       directories,
+      localDirectories,
+      builtInDirectories,
       activeDirectory: activeDirectory || null,
     });
   } catch (error) {
