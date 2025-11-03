@@ -1,17 +1,25 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import FileTree, { TreeNode } from '@/components/FileTree';
 import MarkdownViewer from '@/components/MarkdownViewer';
 import { 
   Menu, X, Settings, BookOpen, Search, Bookmark, 
-  Moon, Sun, Home as HomeIcon, FolderOpen, CheckCircle2 
+  Moon, Sun, FolderOpen, CheckCircle2 
 } from 'lucide-react';
 
+interface Directory {
+  id: number;
+  name: string;
+  path: string;
+  isActive: boolean;
+}
+
 export default function Home() {
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [basePath, setBasePath] = useState('');
-  const [tempPath, setTempPath] = useState('');
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [selectedFile, setSelectedFile] = useState<string>('');
   const [fileContent, setFileContent] = useState<string>('');
@@ -19,44 +27,61 @@ export default function Home() {
   const [fileName, setFileName] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showSettings, setShowSettings] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [completedFiles, setCompletedFiles] = useState<Set<string>>(new Set());
   const [bookmarks, setBookmarks] = useState<Set<string>>(new Set());
+  const [activeDirectory, setActiveDirectory] = useState<Directory | null>(null);
 
-  // Load saved data from localStorage
+  // Load active directory and its data
   useEffect(() => {
-    const savedPath = localStorage.getItem('learningPath');
+    loadActiveDirectory();
+    
     const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-    const savedCompleted = JSON.parse(localStorage.getItem('completedFiles') || '[]');
-    const savedBookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-    
-    if (savedPath) {
-      setBasePath(savedPath);
-      setTempPath(savedPath);
-      scanDirectory(savedPath);
-    } else {
-      setShowSettings(true);
-    }
-    
     setDarkMode(savedDarkMode);
-    setCompletedFiles(new Set(savedCompleted));
-    setBookmarks(new Set(savedBookmarks));
-    
     if (savedDarkMode) {
       document.documentElement.classList.add('dark');
     }
   }, []);
 
-  // Save completed files and bookmarks
+  // Load read status when active directory changes
   useEffect(() => {
-    localStorage.setItem('completedFiles', JSON.stringify([...completedFiles]));
-  }, [completedFiles]);
+    if (activeDirectory) {
+      loadReadStatus(activeDirectory.id);
+      scanDirectory(activeDirectory.path);
+    }
+  }, [activeDirectory]);
 
-  useEffect(() => {
-    localStorage.setItem('bookmarks', JSON.stringify([...bookmarks]));
-  }, [bookmarks]);
+  const loadActiveDirectory = async () => {
+    try {
+      const response = await fetch('/api/directories');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.activeDirectory) {
+          setActiveDirectory(data.activeDirectory);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading active directory:', err);
+    }
+  };
+
+  const loadReadStatus = async (directoryId: number) => {
+    try {
+      const response = await fetch(`/api/read-status?directoryId=${directoryId}`);
+      if (response.ok) {
+        const data = await response.json();
+        const completed = new Set<string>(
+          data.readStatuses.filter((rs: any) => rs.isCompleted).map((rs: any) => rs.filePath)
+        );
+        const bookmarked = new Set<string>(data.bookmarks.map((b: any) => b.filePath));
+        setCompletedFiles(completed);
+        setBookmarks(bookmarked);
+      }
+    } catch (err) {
+      console.error('Error loading read status:', err);
+    }
+  };
 
   const scanDirectory = async (path: string) => {
     setLoading(true);
@@ -76,7 +101,6 @@ export default function Home() {
       const data = await response.json();
       setTree(data.tree);
       setBasePath(data.basePath);
-      localStorage.setItem('learningPath', data.basePath);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to scan directory');
     } finally {
@@ -122,26 +146,62 @@ export default function Home() {
     }
   };
 
-  const toggleCompleted = () => {
-    if (!selectedFile) return;
+  const toggleCompleted = async () => {
+    if (!selectedFile || !activeDirectory) return;
+    
     const newCompleted = new Set(completedFiles);
-    if (newCompleted.has(selectedFile)) {
-      newCompleted.delete(selectedFile);
-    } else {
+    const isCompleted = !newCompleted.has(selectedFile);
+    
+    if (isCompleted) {
       newCompleted.add(selectedFile);
+    } else {
+      newCompleted.delete(selectedFile);
     }
     setCompletedFiles(newCompleted);
+
+    // Update database
+    try {
+      await fetch('/api/read-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          directoryId: activeDirectory.id,
+          filePath: selectedFile,
+          isCompleted,
+        }),
+      });
+    } catch (err) {
+      console.error('Error updating read status:', err);
+    }
   };
 
-  const toggleBookmark = () => {
-    if (!selectedFile) return;
+  const toggleBookmark = async () => {
+    if (!selectedFile || !activeDirectory) return;
+    
     const newBookmarks = new Set(bookmarks);
-    if (newBookmarks.has(selectedFile)) {
-      newBookmarks.delete(selectedFile);
-    } else {
+    const isBookmarked = !newBookmarks.has(selectedFile);
+    
+    if (isBookmarked) {
       newBookmarks.add(selectedFile);
+    } else {
+      newBookmarks.delete(selectedFile);
     }
     setBookmarks(newBookmarks);
+
+    // Update database
+    try {
+      await fetch('/api/bookmarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          directoryId: activeDirectory.id,
+          filePath: selectedFile,
+          isBookmarked,
+        }),
+      });
+    } catch (err) {
+      console.error('Error updating bookmark:', err);
+    }
   };
 
   return (
@@ -185,7 +245,12 @@ export default function Home() {
           ) : error && tree.length === 0 ? (
             <div className="p-4 text-center text-sm text-red-500">{error}</div>
           ) : (
-            <FileTree nodes={tree} onFileSelect={loadFile} selectedPath={selectedFile} />
+            <FileTree 
+              nodes={tree} 
+              onFileSelect={loadFile} 
+              selectedPath={selectedFile}
+              completedFiles={completedFiles}
+            />
           )}
         </div>
 
@@ -207,12 +272,12 @@ export default function Home() {
             >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
-            <button
-              onClick={() => setShowSettings(true)}
-              className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-            >
-              <HomeIcon className="w-5 h-5" />
-            </button>
+            {activeDirectory && (
+              <div className="text-sm">
+                <span className="text-zinc-500">Current: </span>
+                <span className="font-medium">{activeDirectory.name}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -249,8 +314,9 @@ export default function Home() {
               {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
             <button
-              onClick={() => setShowSettings(true)}
+              onClick={() => router.push('/settings')}
               className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+              title="Settings"
             >
               <Settings className="w-5 h-5" />
             </button>
@@ -273,74 +339,26 @@ export default function Home() {
             <div className="flex flex-col items-center justify-center h-full text-center">
               <BookOpen className="w-16 h-16 text-zinc-300 dark:text-zinc-700 mb-4" />
               <h2 className="text-xl font-semibold mb-2">Welcome to Your Learning Hub</h2>
-              <p className="text-zinc-500 dark:text-zinc-400 max-w-md">
-                Select a file from the sidebar to start learning, or configure your learning materials path in settings.
+              <p className="text-zinc-500 dark:text-zinc-400 max-w-md mb-4">
+                {activeDirectory 
+                  ? 'Select a file from the sidebar to start learning.'
+                  : 'No active learning directory found. Go to settings to add one.'
+                }
               </p>
+              {!activeDirectory && (
+                <button
+                  onClick={() => router.push('/settings')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
+                    transition-colors flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  Go to Settings
+                </button>
+              )}
             </div>
           )}
         </div>
       </main>
-
-      {/* Settings Modal */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-2xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Settings className="w-5 h-5" />
-                <h3 className="text-lg font-semibold">Settings</h3>
-              </div>
-              {basePath && (
-                <button
-                  onClick={() => setShowSettings(false)}
-                  className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Learning Materials Path
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={tempPath}
-                    onChange={(e) => setTempPath(e.target.value)}
-                    placeholder="e.g., E:\temp\personal-learning-management-tool"
-                    className="flex-1 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 
-                      bg-white dark:bg-zinc-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    onClick={() => scanDirectory(tempPath)}
-                    disabled={!tempPath || loading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
-                      disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-                  >
-                    <FolderOpen className="w-4 h-4" />
-                    Load
-                  </button>
-                </div>
-                {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
-                {basePath && (
-                  <p className="mt-2 text-sm text-green-600 dark:text-green-400">
-                    ✓ Current path: {basePath}
-                  </p>
-                )}
-              </div>
-
-              <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  This app scans your local directory for markdown files and presents them in an easy-to-navigate interface.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronRight, ChevronDown, File, Folder, FolderOpen } from 'lucide-react';
+import { ChevronRight, ChevronDown, File, Folder, FolderOpen, CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
 
 export interface TreeNode {
@@ -14,6 +14,7 @@ interface FileTreeProps {
   nodes: TreeNode[];
   onFileSelect: (path: string, name: string) => void;
   selectedPath?: string;
+  completedFiles?: Set<string>;
 }
 
 interface TreeNodeItemProps {
@@ -21,13 +22,15 @@ interface TreeNodeItemProps {
   level: number;
   onFileSelect: (path: string, name: string) => void;
   selectedPath?: string;
+  completedFiles?: Set<string>;
 }
 
-function TreeNodeItem({ node, level, onFileSelect, selectedPath }: TreeNodeItemProps) {
-  const [isExpanded, setIsExpanded] = useState(level < 2); // Auto-expand first 2 levels
+function TreeNodeItem({ node, level, onFileSelect, selectedPath, completedFiles }: TreeNodeItemProps) {
+  const [isExpanded, setIsExpanded] = useState(false); // All folders collapsed by default
 
   const isSelected = selectedPath === node.path;
   const isFolder = node.type === 'folder';
+  const isCompleted = completedFiles?.has(node.path);
 
   const handleClick = () => {
     if (isFolder) {
@@ -58,6 +61,9 @@ function TreeNodeItem({ node, level, onFileSelect, selectedPath }: TreeNodeItemP
         {!isFolder && <div className="w-5 mr-1" />}
         <Icon className="w-4 h-4 mr-2 shrink-0" />
         <span className="truncate flex-1 text-left">{node.name}</span>
+        {isCompleted && !isFolder && (
+          <CheckCircle2 className="w-4 h-4 ml-2 text-green-600 dark:text-green-400 shrink-0" />
+        )}
       </button>
       
       {isFolder && isExpanded && node.children && node.children.length > 0 && (
@@ -69,6 +75,7 @@ function TreeNodeItem({ node, level, onFileSelect, selectedPath }: TreeNodeItemP
               level={level + 1}
               onFileSelect={onFileSelect}
               selectedPath={selectedPath}
+              completedFiles={completedFiles}
             />
           ))}
         </div>
@@ -77,7 +84,7 @@ function TreeNodeItem({ node, level, onFileSelect, selectedPath }: TreeNodeItemP
   );
 }
 
-export default function FileTree({ nodes, onFileSelect, selectedPath }: FileTreeProps) {
+export default function FileTree({ nodes, onFileSelect, selectedPath, completedFiles }: FileTreeProps) {
   if (!nodes || nodes.length === 0) {
     return (
       <div className="p-4 text-center text-sm text-zinc-500 dark:text-zinc-400">
@@ -95,6 +102,7 @@ export default function FileTree({ nodes, onFileSelect, selectedPath }: FileTree
           level={0}
           onFileSelect={onFileSelect}
           selectedPath={selectedPath}
+          completedFiles={completedFiles}
         />
       ))}
     </div>
