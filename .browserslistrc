@@ -1,0 +1,28 @@
+# Browsers that we support
+
+# Support last 2 versions of major browsers
+last 2 versions
+
+# Support browsers with > 0.5% market share
+> 0.5%
+
+# Support Internet Explorer 11
+IE 11
+
+# Support Firefox ESR (Extended Support Release)
+Firefox ESR
+
+# Explicitly support older Android browsers
+Android >= 5
+
+# Support Chrome on Android
+ChromeAndroid >= 70
+
+# Support Samsung Internet
+Samsung >= 8
+
+# Don't support dead browsers
+not dead
+
+# Ensure we support browsers from the last 3 years
+since 2018
